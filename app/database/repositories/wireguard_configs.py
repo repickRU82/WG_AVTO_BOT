@@ -1,6 +1,14 @@
 """Repository for wireguard_configs table."""
 
+from collections.abc import Callable
+
 import asyncpg
+
+from app.utils.ip_pool import allocate_next_ip
+
+
+class DuplicateIPAddressError(Exception):
+    """Raised when IP allocation conflicts with another concurrent request."""
 
 
 class WireGuardConfigsRepository:
@@ -40,6 +48,49 @@ class WireGuardConfigsRepository:
                 config_text,
             )
         return int(row["id"])
+
+    async def allocate_and_create(
+        self,
+        user_id: int,
+        network_cidr: str,
+        profile_builder: Callable[[str], tuple[str, str, str, str]],
+        *,
+        retries: int = 5,
+    ) -> tuple[int, str, str]:
+        """Allocate IP and persist config with DB lock + retry for concurrent requests."""
+
+        for _ in range(retries):
+            async with self._pool.acquire() as conn:
+                async with conn.transaction():
+                    await conn.execute("LOCK TABLE wireguard_configs IN SHARE ROW EXCLUSIVE MODE")
+                    rows = await conn.fetch(
+                        "SELECT host(ip_address) AS ip FROM wireguard_configs WHERE is_active"
+                    )
+                    used_ips = {row["ip"] for row in rows}
+                    ip_address = allocate_next_ip(network_cidr, used_ips)
+                    private_key, public_key, preshared_key, config_text = profile_builder(ip_address)
+
+                    try:
+                        row = await conn.fetchrow(
+                            """
+                            INSERT INTO wireguard_configs
+                                (user_id, private_key, public_key, preshared_key, ip_address, config_text)
+                            VALUES ($1, $2, $3, $4, $5, $6)
+                            RETURNING id
+                            """,
+                            user_id,
+                            private_key,
+                            public_key,
+                            preshared_key,
+                            ip_address,
+                            config_text,
+                        )
+                    except asyncpg.UniqueViolationError:
+                        continue
+
+                    return int(row["id"]), ip_address, config_text
+
+        raise DuplicateIPAddressError("Failed to allocate unique WireGuard IP after retries")
 
     async def list_for_user(self, user_id: int) -> list[asyncpg.Record]:
         query = """
