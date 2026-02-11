@@ -22,6 +22,10 @@ async def cmd_menu(message: Message, session_manager: SessionManager) -> None:
         return
 
     admin_block = "\n/admin команды: /stats /users /logs" if role == "admin" else ""
+async def cmd_menu(message: Message, session_role: str) -> None:
+    """Show basic command menu for authenticated users."""
+
+    admin_block = "\n/admin команды: /stats /users /logs" if session_role == "admin" else ""
     await message.answer(
         "Доступные команды:\n"
         "/new_connection - создать WG профиль\n"

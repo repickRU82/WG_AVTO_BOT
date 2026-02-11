@@ -10,6 +10,7 @@ from redis.asyncio import Redis
 
 from app.config import get_settings
 from app.database import Database
+from app.database.connection import Database
 from app.database.repositories import LogsRepository, UsersRepository, WireGuardConfigsRepository
 from app.handlers import register_routers
 from app.services.auth_service import AuthService
@@ -75,6 +76,7 @@ async def main() -> None:
     dp["mikrotik_service"] = mikrotik_service
 
     register_routers(dp)
+    register_routers(dp, session_manager=sessions)
     await set_bot_commands(bot)
 
     try:

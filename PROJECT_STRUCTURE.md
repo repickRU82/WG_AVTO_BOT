@@ -20,7 +20,10 @@ WG_AVTO_BOT/
 │  │  ├─ start.py
 │  │  ├─ auth.py
 │  │  ├─ menu.py
-│  │  └─ connections.py
+│  │  ├─ connections.py
+│  │  └─ middlewares/
+│  │     ├─ __init__.py
+│  │     └─ auth_required.py
 │  ├─ services/
 │  │  ├─ __init__.py
 │  │  ├─ auth_service.py

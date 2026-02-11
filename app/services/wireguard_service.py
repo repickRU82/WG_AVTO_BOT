@@ -3,11 +3,30 @@
 import base64
 import secrets
 from dataclasses import dataclass
+from typing import Protocol
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 
 from app.config import Settings
+
+class WireGuardSettings(Protocol):
+    """Protocol for settings used by WireGuard service."""
+
+    wg_server_public_key: str
+    wg_endpoint_host: str
+    wg_endpoint_port: int
+    wg_dns_servers: str
+    wg_allowed_ips: str
+    wg_persistent_keepalive: int
+    wg_junk_packet_count: int
+    wg_junk_packet_min_size: int
+    wg_junk_packet_max_size: int
+    wg_init_packet_junk_size: int
+    wg_response_packet_junk_size: int
+    wg_underload_packet_junk_size: int
+    wg_transport_packet_magic: int
+    wg_network_cidr: str
 
 
 @dataclass(slots=True)
@@ -24,6 +43,7 @@ class WireGuardService:
     """Generates WireGuard material and renders AmneziaWG config template."""
 
     def __init__(self, settings: Settings) -> None:
+    def __init__(self, settings: WireGuardSettings) -> None:
         self.settings = settings
 
     @staticmethod
