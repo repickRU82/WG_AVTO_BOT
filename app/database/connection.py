@@ -55,10 +55,6 @@ class Database:
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
 
-        CREATE UNIQUE INDEX IF NOT EXISTS uq_wireguard_configs_ip_active
-            ON wireguard_configs (ip_address)
-            WHERE is_active;
-
         CREATE TABLE IF NOT EXISTS subscriptions (
             id BIGSERIAL PRIMARY KEY,
             user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -78,8 +74,35 @@ class Database:
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
         """
+
+        deduplicate_active_ips_sql = """
+        WITH ranked_active AS (
+            SELECT
+                id,
+                ROW_NUMBER() OVER (
+                    PARTITION BY ip_address
+                    ORDER BY created_at DESC, id DESC
+                ) AS row_num
+            FROM wireguard_configs
+            WHERE is_active
+        )
+        UPDATE wireguard_configs AS cfg
+        SET is_active = FALSE
+        FROM ranked_active AS ra
+        WHERE cfg.id = ra.id
+          AND ra.row_num > 1;
+        """
+
+        create_unique_ip_index_sql = """
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_wireguard_configs_ip_active
+            ON wireguard_configs (ip_address)
+            WHERE is_active;
+        """
+
         async with self.pool.acquire() as conn:
             await conn.execute(schema_sql)
+            await conn.execute(deduplicate_active_ips_sql)
+            await conn.execute(create_unique_ip_index_sql)
 
     @asynccontextmanager
     async def acquire(self) -> AsyncIterator[asyncpg.Connection]:
