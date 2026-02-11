@@ -5,10 +5,7 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-COPY pyproject.toml* requirements*.txt* /app/
-
-RUN pip install --no-cache-dir --upgrade pip
-
 COPY . /app
+RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir .
 
 CMD ["python", "-m", "app.main"]

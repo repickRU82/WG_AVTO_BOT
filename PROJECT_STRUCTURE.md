@@ -11,12 +11,19 @@ WG_AVTO_BOT/
 │  │  ├─ connection.py
 │  │  ├─ migrations/
 │  │  └─ repositories/
+│  │     ├─ __init__.py
+│  │     ├─ users.py
+│  │     ├─ logs.py
+│  │     └─ wireguard_configs.py
 │  ├─ handlers/
 │  │  ├─ __init__.py
 │  │  ├─ start.py
 │  │  ├─ auth.py
 │  │  ├─ menu.py
-│  │  └─ connections.py
+│  │  ├─ connections.py
+│  │  └─ middlewares/
+│  │     ├─ __init__.py
+│  │     └─ auth_required.py
 │  ├─ services/
 │  │  ├─ __init__.py
 │  │  ├─ auth_service.py
@@ -25,22 +32,22 @@ WG_AVTO_BOT/
 │  └─ utils/
 │     ├─ __init__.py
 │     ├─ security.py
+│     ├─ session.py
 │     ├─ logger.py
 │     └─ ip_pool.py
 ├─ docker/
 │  └─ bot/
 │     └─ Dockerfile
-├─ scripts/
-│  ├─ run_bot.sh
-│  └─ wait_for_postgres.sh
+├─ examples/
+│  └─ wg_generation_example.py
 ├─ .env.example
 ├─ docker-compose.yml
 ├─ pyproject.toml
-└─ README.md
+└─ PROJECT_STRUCTURE.md
 ```
 
 ## Notes
-- `app/` is the runtime package for bot logic.
+- `app/main.py` wires aiogram Dispatcher, database, Redis session manager and repositories/services.
 - `database/migrations/` is reserved for SQL migration files (or Alembic in future stages).
-- `repositories/` will contain typed asyncpg access layer.
-- `docker/bot/Dockerfile` is planned for bot container image in next block.
+- `handlers/` contains command routers for `/start`, `/login`, `/menu`, `/new_connection`, `/my_connections`.
+- `examples/wg_generation_example.py` demonstrates WireGuard key generation and config rendering.
