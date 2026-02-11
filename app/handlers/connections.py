@@ -4,9 +4,12 @@ from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
 
-from app.database.repositories import UsersRepository, WireGuardConfigsRepository
+from app.database.repositories import (
+    DuplicateIPAddressError,
+    UsersRepository,
+    WireGuardConfigsRepository,
+)
 from app.services.wireguard_service import WireGuardService
-from app.utils.ip_pool import allocate_next_ip
 
 router = Router(name="connections")
 
@@ -28,23 +31,28 @@ async def cmd_new_connection(
         await message.answer("Пользователь не найден. Выполните /start")
         return
 
-    used_ips = await wg_repo.used_ips()
-    ip_address = allocate_next_ip(wg_service.settings.wg_network_cidr, used_ips)
-    creds = wg_service.generate_profile(ip_address=ip_address)
-    config_text = wg_service.render_config(creds)
+    def build_profile(ip_address: str) -> tuple[str, str, str, str]:
+        creds = wg_service.generate_profile(ip_address=ip_address)
+        return (
+            creds.private_key,
+            creds.public_key,
+            creds.preshared_key,
+            wg_service.render_config(creds),
+        )
 
-    config_id = await wg_repo.create(
-        user_id=user.id,
-        private_key=creds.private_key,
-        public_key=creds.public_key,
-        preshared_key=creds.preshared_key,
-        ip_address=creds.ip_address,
-        config_text=config_text,
-    )
+    try:
+        config_id, ip_address, config_text = await wg_repo.allocate_and_create(
+            user_id=user.id,
+            network_cidr=wg_service.settings.wg_network_cidr,
+            profile_builder=build_profile,
+        )
+    except DuplicateIPAddressError:
+        await message.answer("Не удалось выделить уникальный IP. Попробуйте снова.")
+        return
 
     await message.answer(
         f"Новый профиль создан (ID: {config_id}).\n"
-        f"IP: {creds.ip_address}\n\n"
+        f"IP: {ip_address}\n\n"
         f"<pre>{config_text}</pre>"
     )
 
