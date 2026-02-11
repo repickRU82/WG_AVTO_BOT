@@ -1,6 +1,7 @@
 """MikroTik RouterOS API integration for WireGuard peers."""
 
 import asyncio
+import ssl
 from dataclasses import dataclass
 from typing import Any
 
@@ -34,12 +35,13 @@ class MikroTikService:
         raise RuntimeError(f"MikroTik operation failed after retries: {operation}") from last_error
 
     def _connect(self):
+        ssl_wrapper = ssl.create_default_context().wrap_socket if self.settings.mikrotik_use_tls else None
         return connect(
             host=self.settings.mikrotik_host,
             username=self.settings.mikrotik_username,
             password=self.settings.mikrotik_password,
             port=self.settings.mikrotik_port,
-            ssl_wrapper=self.settings.mikrotik_use_tls,
+            ssl_wrapper=ssl_wrapper,
         )
 
     def _run_api_sync(self, operation: str, params: dict[str, str]) -> Any:
@@ -64,11 +66,13 @@ class MikroTikService:
 
         await self._run_api(
             "add_peer",
-            interface="wireguard1",
-            public_key=public_key,
-            allowed_address=f"{ip_address}/32",
-            persistent_keepalive="25",
-            comment=f"peer_user{user_id}",
+            **{
+                "interface": "wireguard1",
+                "public-key": public_key,
+                "allowed-address": f"{ip_address}/32",
+                "persistent-keepalive": "25",
+                "comment": f"peer_user{user_id}",
+            },
         )
 
     async def remove_peer(self, user_id: int) -> int:
