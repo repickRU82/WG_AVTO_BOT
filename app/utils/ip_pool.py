@@ -9,7 +9,11 @@ def allocate_next_ip(network_cidr: str, used_ips: set[str]) -> str:
     network = IPv4Network(network_cidr)
     used = {IPv4Address(ip) for ip in used_ips}
 
+    reserved_gateway_ip = network.network_address + 1
+
     for host in network.hosts():
+        if host == reserved_gateway_ip:
+            continue
         if host not in used:
             return str(host)
 

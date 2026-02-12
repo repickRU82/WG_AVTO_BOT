@@ -120,7 +120,26 @@ nano .env
 - `WG_SERVER_PUBLIC_KEY`
 - `WG_ENDPOINT_HOST`
 - `WG_ENDPOINT_PORT`
-- `MIKROTIK_HOST`, `MIKROTIK_USERNAME`, `MIKROTIK_PASSWORD`, `MIKROTIK_USE_TLS`
+- `MIKROTIK_HOST`, `MIKROTIK_USERNAME`, `MIKROTIK_PASSWORD`, `MIKROTIK_USE_TLS`, `WG_INTERFACE_NAME`, `MIKROTIK_DRY_RUN`
+
+
+Рекомендуемые значения для RouterOS API:
+
+```dotenv
+WG_INTERFACE_NAME=WG-Users
+WG_NETWORK_CIDR=10.66.66.0/24
+MIKROTIK_PORT=8728
+MIKROTIK_USE_TLS=false
+MIKROTIK_DRY_RUN=false
+```
+
+Для безопасности ограничьте доступ к API на MikroTik только IP-адресом сервера бота:
+
+```routeros
+/ip service set api address=192.168.5.17/32 port=8728
+```
+
+Если включаете TLS (`MIKROTIK_USE_TLS=true`) с self-signed сертификатом, бот может работать в insecure-режиме (`MIKROTIK_TLS_INSECURE=true`, verify=CERT_NONE). Для strict TLS используйте доверенный сертификат и `MIKROTIK_TLS_INSECURE=false`.
 
 Пример DSN для локального PostgreSQL/Redis:
 
@@ -159,6 +178,7 @@ python -m app.main
 5. Выполните `/menu`.
 6. Выполните `/new_connection` — бот должен выдать WG-конфиг.
 7. Выполните `/my_connections`.
+8. Админ может выполнить `/mt_test` для проверки API MikroTik.
 
 ---
 
@@ -266,5 +286,5 @@ redis-cli -h 127.0.0.1 -p 6379 ping
 ```
 
 ### Ошибка MikroTik API
-Проверьте адрес/порт и TLS-флаг (`8728` без TLS, `8729` с TLS), а также API user/password в `.env`.
+Проверьте адрес/порт и TLS-флаг (`8728` без TLS, `8729` с TLS), а также API user/password в `.env`. Если раньше использовался нестандартный порт (например `25`), верните RouterOS API на `8728`.
 

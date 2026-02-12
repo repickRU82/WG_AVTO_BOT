@@ -11,7 +11,7 @@ router = Router(name="menu")
 async def cmd_menu(message: Message, session_role: str) -> None:
     """Show basic command menu for authenticated users."""
 
-    admin_block = "\n/admin команды: /stats /users /logs" if session_role == "admin" else ""
+    admin_block = "\n/admin команды: /stats /users /logs /mt_test" if session_role == "admin" else ""
     await message.answer(
         "Доступные команды:\n"
         "/new_connection - создать WG профиль\n"

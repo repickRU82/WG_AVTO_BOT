@@ -1,7 +1,9 @@
 """Application entrypoint for aiogram bot."""
 
 import asyncio
+import os
 
+import structlog
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -29,6 +31,7 @@ async def set_bot_commands(bot: Bot) -> None:
             BotCommand(command="menu", description="Открыть меню"),
             BotCommand(command="new_connection", description="Создать WireGuard подключение"),
             BotCommand(command="my_connections", description="Мои подключения"),
+            BotCommand(command="mt_test", description="[admin] Проверка MikroTik API"),
         ]
     )
 
@@ -37,7 +40,22 @@ async def main() -> None:
     """Bootstrap app services and start long-polling."""
 
     settings = get_settings()
-    setup_logging(settings.log_level)
+    setup_logging(settings.log_level, settings.log_file_path)
+    logger = structlog.get_logger(__name__)
+
+    raw_database_dsn = os.getenv("DATABASE_DSN", "")
+    if raw_database_dsn.upper().startswith("DATABASE_DSN="):
+        logger.warning("DATABASE_DSN had duplicated prefix and was normalized")
+
+    logger.info(
+        "MikroTik runtime settings",
+        enabled=settings.mikrotik_enabled,
+        host=settings.mikrotik_host,
+        port=settings.mikrotik_port,
+        tls=settings.mikrotik_use_tls,
+        dry_run=settings.mikrotik_dry_run,
+        interface=settings.wg_interface_name,
+    )
 
     bot = Bot(token=settings.bot_token, default=DefaultBotProperties(parse_mode=ParseMode(settings.bot_parse_mode)))
     dp = Dispatcher()
