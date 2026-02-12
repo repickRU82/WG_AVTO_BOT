@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     session_ttl_seconds: int = 900
     pin_bcrypt_rounds: int = 12
 
+    wg_interface_name: str = "wireguard1"
     wg_server_public_key: str = ""
     wg_endpoint_host: str = "vpn.example.com"
     wg_endpoint_port: int = 51820
@@ -45,6 +46,7 @@ class Settings(BaseSettings):
     mikrotik_host: str = "192.168.88.1"
     mikrotik_port: int = 8729
     mikrotik_use_tls: bool = True
+    mikrotik_tls_insecure: bool = True
     mikrotik_username: str = "api_user"
     mikrotik_password: str = "api_password"
     mikrotik_timeout_seconds: int = 15
@@ -53,6 +55,7 @@ class Settings(BaseSettings):
 
     log_level: str = "INFO"
     log_format: Literal["console", "json"] = "json"
+    log_file_path: str = ""
 
     @property
     def admin_ids(self) -> set[int]:
