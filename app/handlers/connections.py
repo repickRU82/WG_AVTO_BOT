@@ -78,6 +78,7 @@ async def cmd_new_connection(
                     "telegram_id": telegram_id,
                     "config_id": config_id,
                     "ip_address": ip_address,
+                    "peer_id": peer_id,
                     "public_key_tail": credentials.public_key[-8:],
                 },
             )
