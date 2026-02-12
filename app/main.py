@@ -37,7 +37,7 @@ async def main() -> None:
     """Bootstrap app services and start long-polling."""
 
     settings = get_settings()
-    setup_logging(settings.log_level)
+    setup_logging(settings.log_level, settings.log_file_path)
 
     bot = Bot(token=settings.bot_token, default=DefaultBotProperties(parse_mode=ParseMode(settings.bot_parse_mode)))
     dp = Dispatcher()
