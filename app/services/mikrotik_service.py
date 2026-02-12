@@ -42,6 +42,10 @@ class MikroTikService:
     ) -> tuple[str, str | None]:
         peer_name = f"tg-{telegram_id}"
         comment = f"tg:{telegram_id}:vpn"
+        """Ensure peer exists and return action + peer id."""
+
+        peer_name = f"peer-{config_id}"
+        comment = f"tg:{telegram_id}:profile:{config_id}"
         return await self._client.add_wireguard_peer(
             interface=self.settings.wg_interface_name,
             name=peer_name,
@@ -57,6 +61,17 @@ class MikroTikService:
         return identity, len(peers)
 
     async def remove_wireguard_peer(self, peer_id: str) -> None:
+
+    async def test_connection(self) -> tuple[str, int]:
+        """Return identity and peers count for diagnostics."""
+
+        identity = await self._client.ping()
+        peers = await self._client.list_wireguard_peers(self.settings.wg_interface_name)
+        return identity, len(peers)
+
+    async def remove_wireguard_peer(self, peer_id: str) -> None:
+        """Delete peer by RouterOS internal ID."""
+
         await self._client.remove_wireguard_peer(peer_id)
 
 
