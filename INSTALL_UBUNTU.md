@@ -120,7 +120,7 @@ nano .env
 - `WG_SERVER_PUBLIC_KEY`
 - `WG_ENDPOINT_HOST`
 - `WG_ENDPOINT_PORT`
-- `MIKROTIK_HOST`, `MIKROTIK_USERNAME`, `MIKROTIK_PASSWORD`, `MIKROTIK_USE_TLS`, `WG_INTERFACE_NAME`
+- `MIKROTIK_HOST`, `MIKROTIK_USERNAME`, `MIKROTIK_PASSWORD`, `MIKROTIK_USE_TLS`, `WG_INTERFACE_NAME`, `MIKROTIK_DRY_RUN`
 
 
 Рекомендуемые значения для RouterOS API:
@@ -130,6 +130,7 @@ WG_INTERFACE_NAME=WG-Users
 WG_NETWORK_CIDR=10.66.66.0/24
 MIKROTIK_PORT=8728
 MIKROTIK_USE_TLS=false
+MIKROTIK_DRY_RUN=false
 ```
 
 Для безопасности ограничьте доступ к API на MikroTik только IP-адресом сервера бота:
@@ -177,6 +178,7 @@ python -m app.main
 5. Выполните `/menu`.
 6. Выполните `/new_connection` — бот должен выдать WG-конфиг.
 7. Выполните `/my_connections`.
+8. Админ может выполнить `/mt_test` для проверки API MikroTik.
 
 ---
 

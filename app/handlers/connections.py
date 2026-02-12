@@ -64,16 +64,15 @@ async def cmd_new_connection(
 
     if mikrotik_service.settings.mikrotik_enabled:
         try:
-            created = await mikrotik_service.ensure_wireguard_peer(
+            action, peer_id = await mikrotik_service.ensure_wireguard_peer(
                 telegram_id=telegram_id,
                 config_id=config_id,
                 public_key=credentials.public_key,
                 ip_address=ip_address,
                 preshared_key=credentials.preshared_key,
             )
-            event_type = "mikrotik_peer_added" if created else "mikrotik_peer_exists"
             await logs_repo.add(
-                event_type=event_type,
+                event_type=f"mikrotik_peer_{action}",
                 user_id=user.id,
                 details={
                     "telegram_id": telegram_id,
@@ -102,7 +101,7 @@ async def cmd_new_connection(
                 },
             )
             await message.answer(
-                "Конфиг создан, но применить на сервере не удалось — обратитесь к администратору."
+                "Конфиг создан, но peer на сервере не создан — обратитесь к администратору."
             )
 
     await message.answer(
@@ -138,3 +137,36 @@ async def cmd_my_connections(
         lines.append(f"- ID {item['id']} | IP {item['ip_address']} | active={item['is_active']}")
 
     await message.answer("\n".join(lines))
+
+
+@router.message(Command("mt_test"))
+async def cmd_mt_test(
+    message: Message,
+    mikrotik_service: MikroTikService,
+) -> None:
+    """Admin command for MikroTik API diagnostics."""
+
+    if message.from_user is None:
+        return
+
+    if session_role != "admin":
+        await message.answer("Команда доступна только администраторам.")
+        return
+
+    if not mikrotik_service.settings.mikrotik_enabled:
+        await message.answer("MikroTik интеграция отключена (MIKROTIK_ENABLED=false).")
+        return
+
+    try:
+        identity, peers_count = await mikrotik_service.test_connection()
+    except MikroTikClientError as exc:
+        logger.exception("MikroTik test failed", telegram_id=message.from_user.id)
+        await message.answer(f"MikroTik test failed: {exc}")
+        return
+
+    await message.answer(
+        "MikroTik API OK\n"
+        f"Identity: {identity}\n"
+        f"Interface: {mikrotik_service.settings.wg_interface_name}\n"
+        f"Peers count: {peers_count}"
+    )

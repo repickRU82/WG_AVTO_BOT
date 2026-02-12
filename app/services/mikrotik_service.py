@@ -1,6 +1,9 @@
 """Service layer for MikroTik RouterOS integration."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any
+
+import structlog
 
 from app.config import Settings
 from app.integrations import MikroTikClient, MikroTikClientError
@@ -11,8 +14,11 @@ class MikroTikService:
     """Service facade around MikroTik client initialized from app settings."""
 
     settings: Settings
+    _client: MikroTikClient = field(init=False, repr=False)
+    _logger: Any = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
+        self._logger = structlog.get_logger(__name__)
         self._client = MikroTikClient(
             host=self.settings.mikrotik_host,
             port=self.settings.mikrotik_port,
@@ -23,6 +29,7 @@ class MikroTikService:
             retry_attempts=self.settings.mikrotik_retry_attempts,
             retry_backoff_seconds=self.settings.mikrotik_retry_backoff_seconds,
             tls_insecure=self.settings.mikrotik_tls_insecure,
+            dry_run=self.settings.mikrotik_dry_run,
         )
 
     async def ensure_wireguard_peer(
@@ -32,11 +39,11 @@ class MikroTikService:
         public_key: str,
         ip_address: str,
         preshared_key: str | None,
-    ) -> bool:
-        """Ensure peer exists and return True when created, False when already present."""
+    ) -> tuple[str, str | None]:
+        """Ensure peer exists and return action + peer id."""
 
         peer_name = f"peer-{config_id}"
-        comment = f"tg:{telegram_id} cfg:{config_id}"
+        comment = f"tg:{telegram_id}:profile:{config_id}"
         return await self._client.add_wireguard_peer(
             interface=self.settings.wg_interface_name,
             name=peer_name,
@@ -45,6 +52,13 @@ class MikroTikService:
             preshared_key=preshared_key,
             comment=comment,
         )
+
+    async def test_connection(self) -> tuple[str, int]:
+        """Return identity and peers count for diagnostics."""
+
+        identity = await self._client.ping()
+        peers = await self._client.list_wireguard_peers(self.settings.wg_interface_name)
+        return identity, len(peers)
 
     async def remove_wireguard_peer(self, peer_id: str) -> None:
         """Delete peer by RouterOS internal ID."""
