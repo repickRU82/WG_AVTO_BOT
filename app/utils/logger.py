@@ -1,14 +1,22 @@
 """Logging setup with structlog."""
 
 import logging
+import sys
+from pathlib import Path
 
 import structlog
 
 
-def setup_logging(level: str = "INFO") -> None:
+def setup_logging(level: str = "INFO", log_file_path: str = "") -> None:
     """Configure stdlib and structlog processors."""
 
-    logging.basicConfig(level=getattr(logging, level.upper(), logging.INFO), format="%(message)s")
+    log_level = getattr(logging, level.upper(), logging.INFO)
+    handlers: list[logging.Handler] = [logging.StreamHandler(sys.stdout)]
+    if log_file_path:
+        Path(log_file_path).parent.mkdir(parents=True, exist_ok=True)
+        handlers.append(logging.FileHandler(log_file_path))
+
+    logging.basicConfig(level=log_level, format="%(message)s", handlers=handlers, force=True)
 
     structlog.configure(
         processors=[
@@ -17,7 +25,7 @@ def setup_logging(level: str = "INFO") -> None:
             structlog.processors.add_log_level,
             structlog.processors.JSONRenderer(),
         ],
-        wrapper_class=structlog.make_filtering_bound_logger(getattr(logging, level.upper(), logging.INFO)),
-        logger_factory=structlog.PrintLoggerFactory(),
+        wrapper_class=structlog.make_filtering_bound_logger(log_level),
+        logger_factory=structlog.stdlib.LoggerFactory(),
         cache_logger_on_first_use=True,
     )

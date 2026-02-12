@@ -1,82 +1,63 @@
-"""MikroTik RouterOS API integration for WireGuard peers."""
+"""Service layer for MikroTik RouterOS integration."""
 
-import asyncio
-import ssl
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
-from librouteros import connect
+import structlog
 
 from app.config import Settings
+from app.integrations import MikroTikClient, MikroTikClientError
 
 
 @dataclass(slots=True)
 class MikroTikService:
-    """Service that wraps librouteros calls with retries and timeout."""
+    """Service facade around MikroTik client initialized from app settings."""
 
     settings: Settings
+    _client: MikroTikClient = field(init=False, repr=False)
+    _logger: Any = field(init=False, repr=False)
 
-    async def _run_api(self, operation: str, **params: str) -> Any:
-        """Run API command with retry/backoff in worker thread."""
-
-        last_error: Exception | None = None
-
-        for attempt in range(1, self.settings.mikrotik_retry_attempts + 1):
-            try:
-                return await asyncio.wait_for(
-                    asyncio.to_thread(self._run_api_sync, operation, params),
-                    timeout=self.settings.mikrotik_timeout_seconds,
-                )
-            except Exception as exc:  # noqa: BLE001
-                last_error = exc
-                if attempt < self.settings.mikrotik_retry_attempts:
-                    await asyncio.sleep(self.settings.mikrotik_retry_backoff_seconds * attempt)
-
-        raise RuntimeError(f"MikroTik operation failed after retries: {operation}") from last_error
-
-    def _connect(self):
-        ssl_wrapper = ssl.create_default_context().wrap_socket if self.settings.mikrotik_use_tls else None
-        return connect(
+    def __post_init__(self) -> None:
+        self._logger = structlog.get_logger(__name__)
+        self._client = MikroTikClient(
             host=self.settings.mikrotik_host,
+            port=self.settings.mikrotik_port,
             username=self.settings.mikrotik_username,
             password=self.settings.mikrotik_password,
-            port=self.settings.mikrotik_port,
-            ssl_wrapper=ssl_wrapper,
+            use_tls=self.settings.mikrotik_use_tls,
+            timeout_seconds=self.settings.mikrotik_timeout_seconds,
+            retry_attempts=self.settings.mikrotik_retry_attempts,
+            retry_backoff_seconds=self.settings.mikrotik_retry_backoff_seconds,
+            tls_insecure=self.settings.mikrotik_tls_insecure,
+            dry_run=self.settings.mikrotik_dry_run,
         )
 
-    def _run_api_sync(self, operation: str, params: dict[str, str]) -> Any:
-        api = self._connect()
-        peers_path = api.path("interface/wireguard/peers")
-
-        if operation == "add_peer":
-            peers_path.add(**params)
-            return None
-
-        if operation == "remove_peer":
-            comment = params["comment"]
-            peer_ids = [item[".id"] for item in peers_path.select(".id", "comment") if item.get("comment") == comment]
-            for peer_id in peer_ids:
-                peers_path.remove(**{".id": peer_id})
-            return len(peer_ids)
-
-        raise ValueError(f"Unsupported MikroTik operation: {operation}")
-
-    async def add_peer(self, user_id: int, public_key: str, ip_address: str) -> None:
-        """Create WireGuard peer on RouterOS."""
-
-        await self._run_api(
-            "add_peer",
-            **{
-                "interface": "wireguard1",
-                "public-key": public_key,
-                "allowed-address": f"{ip_address}/32",
-                "persistent-keepalive": "25",
-                "comment": f"peer_user{user_id}",
-            },
+    async def ensure_wireguard_peer(
+        self,
+        telegram_id: int,
+        config_id: int,
+        public_key: str,
+        ip_address: str,
+        preshared_key: str | None,
+    ) -> tuple[str, str | None]:
+        peer_name = f"tg-{telegram_id}"
+        comment = f"tg:{telegram_id}:vpn"
+        return await self._client.add_wireguard_peer(
+            interface=self.settings.wg_interface_name,
+            name=peer_name,
+            public_key=public_key,
+            allowed_address=f"{ip_address}/32",
+            preshared_key=preshared_key,
+            comment=comment,
         )
 
-    async def remove_peer(self, user_id: int) -> int:
-        """Delete peer by comment in RouterOS and return number of removed records."""
+    async def test_connection(self) -> tuple[str, int]:
+        identity = await self._client.ping()
+        peers = await self._client.list_wireguard_peers(self.settings.wg_interface_name)
+        return identity, len(peers)
 
-        removed = await self._run_api("remove_peer", comment=f"peer_user{user_id}")
-        return int(removed)
+    async def remove_wireguard_peer(self, peer_id: str) -> None:
+        await self._client.remove_wireguard_peer(peer_id)
+
+
+__all__ = ["MikroTikService", "MikroTikClientError"]
