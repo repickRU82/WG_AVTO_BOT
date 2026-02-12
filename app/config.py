@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     bot_token: str = Field(..., min_length=20)
     bot_parse_mode: str = "HTML"
     admin_telegram_ids: str = ""
+    global_pin: str = "1234"
+    rate_limit_reissue_seconds: int = 300
 
     database_dsn: str = "postgresql://wg_bot:wg_bot_password@127.0.0.1:5432/wg_bot"
     redis_dsn: str = "redis://127.0.0.1:6379/0"

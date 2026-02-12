@@ -40,6 +40,8 @@ class MikroTikService:
         ip_address: str,
         preshared_key: str | None,
     ) -> tuple[str, str | None]:
+        peer_name = f"tg-{telegram_id}"
+        comment = f"tg:{telegram_id}:vpn"
         """Ensure peer exists and return action + peer id."""
 
         peer_name = f"peer-{config_id}"
@@ -52,6 +54,13 @@ class MikroTikService:
             preshared_key=preshared_key,
             comment=comment,
         )
+
+    async def test_connection(self) -> tuple[str, int]:
+        identity = await self._client.ping()
+        peers = await self._client.list_wireguard_peers(self.settings.wg_interface_name)
+        return identity, len(peers)
+
+    async def remove_wireguard_peer(self, peer_id: str) -> None:
 
     async def test_connection(self) -> tuple[str, int]:
         """Return identity and peers count for diagnostics."""

@@ -2,6 +2,7 @@
 
 import logging
 import sys
+from pathlib import Path
 
 import structlog
 
@@ -12,6 +13,7 @@ def setup_logging(level: str = "INFO", log_file_path: str = "") -> None:
     log_level = getattr(logging, level.upper(), logging.INFO)
     handlers: list[logging.Handler] = [logging.StreamHandler(sys.stdout)]
     if log_file_path:
+        Path(log_file_path).parent.mkdir(parents=True, exist_ok=True)
         handlers.append(logging.FileHandler(log_file_path))
 
     logging.basicConfig(level=log_level, format="%(message)s", handlers=handlers, force=True)

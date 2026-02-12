@@ -14,6 +14,7 @@ class DummyUser:
     role: str
     pin_hash: str
     is_active: bool
+    access_status: str
 
 
 class FakeUsersRepo:
@@ -24,6 +25,9 @@ class FakeUsersRepo:
             username="u",
             full_name="User",
             role="user",
+            pin_hash="ignored",
+            is_active=True,
+            access_status="approved",
             pin_hash=hash_pin("1234", rounds=12),
             is_active=True,
         )
@@ -45,6 +49,7 @@ class FakeSessionManager:
         self.created.append((telegram_id, role))
 
 
+def test_pin_and_login_success() -> None:
 def test_login_success_creates_event_without_crash() -> None:
     users = FakeUsersRepo()
     logs = FakeLogsRepo()
@@ -56,6 +61,14 @@ def test_login_success_creates_event_without_crash() -> None:
         sessions=sessions,  # type: ignore[arg-type]
         pin_bcrypt_rounds=12,
         admin_ids=set(),
+        global_pin="1234",
+    )
+
+    ok, user = asyncio.run(service.check_pin(telegram_id=123, pin="1234"))
+    assert ok is True
+    assert user is not None
+    asyncio.run(service.login_approved(user))
+
     )
 
     success, role = asyncio.run(service.login(telegram_id=123, pin="1234"))

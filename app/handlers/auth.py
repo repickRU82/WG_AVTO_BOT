@@ -1,54 +1,58 @@
-"""Authentication handlers with PIN-based login/registration."""
+"""Authentication handlers with global PIN and admin approval workflow."""
 
+import structlog
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message
 
+from app.database.repositories import UsersRepository
 from app.services.auth_service import AuthService
+from app.ui.keyboards import main_menu
+from app.ui import texts
 
 router = Router(name="auth")
+logger = structlog.get_logger(__name__)
 
 
 class AuthStates(StatesGroup):
-    """FSM states for auth flow."""
+    waiting_for_pin = State()
 
-    waiting_for_registration_pin = State()
-    waiting_for_login_pin = State()
+
+async def _notify_admins_about_pending(message: Message, auth_service: AuthService) -> None:
+    if message.bot is None or message.from_user is None:
+        return
+
+    for admin_id in auth_service.admin_ids:
+        if admin_id == message.from_user.id:
+            continue
+        username = f"@{message.from_user.username}" if message.from_user.username else "(нет username)"
+        await message.bot.send_message(
+            admin_id,
+            "🔔 Запрос доступа к VPN\n"
+            f"👤 Имя: {message.from_user.full_name}\n"
+            f"🔗 Username: {username}\n"
+            f"🆔 Telegram ID: {message.from_user.id}\n\n"
+            f"Для выдачи: /approve {message.from_user.id}\n"
+            f"Для блокировки: /block {message.from_user.id}",
+        )
 
 
 @router.message(Command("start"))
-async def cmd_start(message: Message, state: FSMContext, auth_service: AuthService) -> None:
-    """Start command: register new user or route existing to login."""
-
-    if message.from_user is None:
-        return
-
-    user = await auth_service.users_repo.get_by_telegram_id(message.from_user.id)
-    if user is None:
-        await message.answer(
-            "Добро пожаловать! Вы еще не зарегистрированы. "
-            "Введите PIN (4-10 цифр), чтобы создать аккаунт."
-        )
-        await state.set_state(AuthStates.waiting_for_registration_pin)
-        return
-
-    await message.answer("Вы зарегистрированы. Для входа используйте /login")
+async def cmd_start(message: Message, state: FSMContext) -> None:
+    await state.set_state(AuthStates.waiting_for_pin)
+    await message.answer(texts.START_ASK_PIN)
 
 
 @router.message(Command("login"))
 async def cmd_login(message: Message, state: FSMContext) -> None:
-    """Ask for PIN and start login state."""
-
-    await state.set_state(AuthStates.waiting_for_login_pin)
-    await message.answer("Введите ваш PIN для входа:")
+    await state.set_state(AuthStates.waiting_for_pin)
+    await message.answer(texts.START_ASK_PIN)
 
 
-@router.message(AuthStates.waiting_for_registration_pin, F.text.regexp(r"^\d{4,10}$"))
-async def register_with_pin(message: Message, state: FSMContext, auth_service: AuthService) -> None:
-    """Register user with chosen PIN."""
-
+@router.message(AuthStates.waiting_for_pin, F.text)
+async def process_pin(message: Message, state: FSMContext, auth_service: AuthService) -> None:
     if message.from_user is None or message.text is None:
         return
 
@@ -56,41 +60,63 @@ async def register_with_pin(message: Message, state: FSMContext, auth_service: A
         telegram_id=message.from_user.id,
         username=message.from_user.username,
         full_name=message.from_user.full_name,
-        pin=message.text,
     )
+    pin_ok, user = await auth_service.check_pin(message.from_user.id, message.text.strip())
+    if not pin_ok or user is None:
+        await message.answer(texts.PIN_INVALID)
+        return
+
+    if user.access_status == "blocked":
+        await message.answer(texts.PIN_BLOCKED)
+        await state.clear()
+        return
+
+    if user.access_status != "approved":
+        await message.answer(texts.PIN_PENDING)
+        await _notify_admins_about_pending(message, auth_service)
+        await state.clear()
+        return
+
+    await auth_service.login_approved(user)
     await state.clear()
-    await message.answer(
-        f"Регистрация завершена. Роль: <b>{user.role}</b>. "
-        "Теперь выполните /login для входа."
-    )
+    await message.answer(texts.PIN_APPROVED, reply_markup=main_menu(user.role == "admin"))
 
 
-@router.message(AuthStates.waiting_for_registration_pin)
-async def invalid_registration_pin(message: Message) -> None:
-    """Validate registration PIN format."""
-
-    await message.answer("PIN должен быть числовым и длиной от 4 до 10 символов.")
-
-
-@router.message(AuthStates.waiting_for_login_pin, F.text.regexp(r"^\d{4,10}$"))
-async def login_with_pin(message: Message, state: FSMContext, auth_service: AuthService) -> None:
-    """Login existing user and open menu on success."""
-
+@router.message(Command("approve"))
+async def cmd_approve(message: Message, users_repo: UsersRepository, auth_service: AuthService) -> None:
     if message.from_user is None or message.text is None:
         return
-
-    success, role = await auth_service.login(telegram_id=message.from_user.id, pin=message.text)
-    await state.clear()
-
-    if not success:
-        await message.answer("Неверный PIN или пользователь не найден. Повторите /login")
+    if message.from_user.id not in auth_service.admin_ids:
+        await message.answer("Команда только для админа.")
         return
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2 or not parts[1].isdigit():
+        await message.answer("Использование: /approve <telegram_id>")
+        return
+    target = int(parts[1])
+    await users_repo.set_access_status(target, "approved")
+    await message.answer(f"✅ Доступ выдан: {target}")
+    try:
+        await message.bot.send_message(target, texts.PIN_APPROVED)
+    except Exception:  # noqa: BLE001
+        logger.warning("Failed to notify approved user", telegram_id=target)
 
-    await message.answer(f"Успешный вход. Ваша роль: <b>{role}</b>. Используйте /menu")
 
-
-@router.message(AuthStates.waiting_for_login_pin)
-async def invalid_login_pin(message: Message) -> None:
-    """Validate login PIN format."""
-
-    await message.answer("PIN должен быть числовым и длиной от 4 до 10 символов.")
+@router.message(Command("block"))
+async def cmd_block(message: Message, users_repo: UsersRepository, auth_service: AuthService) -> None:
+    if message.from_user is None or message.text is None:
+        return
+    if message.from_user.id not in auth_service.admin_ids:
+        await message.answer("Команда только для админа.")
+        return
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2 or not parts[1].isdigit():
+        await message.answer("Использование: /block <telegram_id>")
+        return
+    target = int(parts[1])
+    await users_repo.set_access_status(target, "blocked")
+    await message.answer(f"⛔ Пользователь заблокирован: {target}")
+    try:
+        await message.bot.send_message(target, "⛔ Доступ к VPN заблокирован администратором.")
+    except Exception:  # noqa: BLE001
+        logger.warning("Failed to notify blocked user", telegram_id=target)

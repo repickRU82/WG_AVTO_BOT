@@ -114,6 +114,7 @@ nano .env
 Минимально обязательно заполнить:
 
 - `BOT_TOKEN`
+- `GLOBAL_PIN`
 - `ADMIN_TELEGRAM_IDS`
 - `DATABASE_DSN`
 - `REDIS_DSN`
@@ -288,3 +289,11 @@ redis-cli -h 127.0.0.1 -p 6379 ping
 ### Ошибка MikroTik API
 Проверьте адрес/порт и TLS-флаг (`8728` без TLS, `8729` с TLS), а также API user/password в `.env`. Если раньше использовался нестандартный порт (например `25`), верните RouterOS API на `8728`.
 
+
+
+## Безопасное обновление
+
+```bash
+cd /opt/WG_AVTO_BOT
+bash scripts/update.sh
+```

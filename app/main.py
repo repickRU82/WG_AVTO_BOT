@@ -77,6 +77,7 @@ async def main() -> None:
         sessions=sessions,
         pin_bcrypt_rounds=settings.pin_bcrypt_rounds,
         admin_ids=settings.admin_ids,
+        global_pin=settings.global_pin,
     )
     wg_service = WireGuardService(settings=settings)
     mikrotik_service = MikroTikService(settings=settings)
