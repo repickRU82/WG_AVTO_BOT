@@ -10,6 +10,7 @@ from app.database.repositories import UsersRepository
 from app.services.auth_service import AuthService
 from app.ui import texts
 from app.ui.keyboards import main_menu
+from app.ui.labels import BTN_LOGIN
 from app.utils.logging_compat import get_logger
 
 router = Router(name="auth")
@@ -84,7 +85,7 @@ async def cmd_login(message: Message, state: FSMContext) -> None:
     await message.answer(texts.START_ASK_PIN)
 
 
-@router.message(F.text == "🔐 Войти (PIN)")
+@router.message(F.text == BTN_LOGIN)
 async def login_button(message: Message, state: FSMContext) -> None:
     await state.set_state(AuthStates.waiting_for_pin)
     await message.answer(texts.START_ASK_PIN)

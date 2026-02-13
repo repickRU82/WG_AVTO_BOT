@@ -2,24 +2,38 @@
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 
+from app.ui.labels import (
+    BTN_AUDIT,
+    BTN_HELP,
+    BTN_INSTALL,
+    BTN_MIKROTIK,
+    BTN_REISSUE,
+    BTN_REQUESTS,
+    BTN_SETTINGS,
+    BTN_STATUS,
+    BTN_TROUBLE,
+    BTN_USERS,
+    BTN_VPN_REQUEST,
+)
+
 
 def _user_rows() -> list[list[KeyboardButton]]:
     return [
-        [KeyboardButton(text="✅ Запросить VPN"), KeyboardButton(text="🔄 Переустановить VPN")],
-        [KeyboardButton(text="📄 Мой статус"), KeyboardButton(text="❓ Помощь")],
-        [KeyboardButton(text="🧩 Как установить"), KeyboardButton(text="🛠 Если не работает")],
+        [KeyboardButton(text=BTN_VPN_REQUEST), KeyboardButton(text=BTN_REISSUE)],
+        [KeyboardButton(text=BTN_STATUS), KeyboardButton(text=BTN_HELP)],
+        [KeyboardButton(text=BTN_INSTALL), KeyboardButton(text=BTN_TROUBLE)],
     ]
 
 
 def _admin_rows() -> list[list[KeyboardButton]]:
     return [
-        [KeyboardButton(text="🧑‍💼 Заявки"), KeyboardButton(text="👥 Пользователи")],
-        [KeyboardButton(text="🔧 MikroTik"), KeyboardButton(text="🧾 Журнал действий")],
+        [KeyboardButton(text=BTN_REQUESTS), KeyboardButton(text=BTN_USERS)],
+        [KeyboardButton(text=BTN_MIKROTIK), KeyboardButton(text=BTN_AUDIT)],
     ]
 
 
 def _superadmin_rows() -> list[list[KeyboardButton]]:
-    return [[KeyboardButton(text="⚙️ Настройки")]]
+    return [[KeyboardButton(text=BTN_SETTINGS)]]
 
 
 def main_menu(role: str) -> ReplyKeyboardMarkup:

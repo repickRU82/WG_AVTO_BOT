@@ -16,6 +16,7 @@ from app.services.mikrotik_service import MikroTikClientError, MikroTikService
 from app.services.wireguard_service import WireGuardCredentials, WireGuardService
 from app.ui import texts
 from app.ui.keyboards import reissue_confirm_keyboard
+from app.ui.labels import BTN_REISSUE, BTN_STATUS, BTN_VPN_REQUEST
 from app.utils.logging_compat import get_logger
 
 router = Router(name="connections")
@@ -67,7 +68,7 @@ async def _send_config(message: Message, telegram_id: int, config_text: str) -> 
 
 
 @router.message(Command("new_connection"))
-@router.message(F.text == "✅ Запросить VPN")
+@router.message(F.text == BTN_VPN_REQUEST)
 async def cmd_new_connection(
     message: Message,
     users_repo: UsersRepository,
@@ -132,7 +133,7 @@ async def cmd_new_connection(
 
 
 @router.message(Command("my_connections"))
-@router.message(F.text == "📄 Мой статус")
+@router.message(F.text == BTN_STATUS)
 async def my_status(message: Message, users_repo: UsersRepository, wg_repo: WireGuardConfigsRepository) -> None:
     if message.from_user is None:
         return
@@ -151,7 +152,7 @@ async def my_status(message: Message, users_repo: UsersRepository, wg_repo: Wire
     )
 
 
-@router.message(F.text == "🔄 Переустановить VPN")
+@router.message(F.text == BTN_REISSUE)
 async def ask_reissue(message: Message) -> None:
     await message.answer(texts.REISSUE_CONFIRM, reply_markup=reissue_confirm_keyboard())
 
@@ -212,6 +213,10 @@ async def confirm_reissue(
 
 @router.message(Command("mt_test"))
 async def cmd_mt_test(message: Message, session_role: str, mikrotik_service: MikroTikService) -> None:
+    await run_mikrotik_test(message, session_role, mikrotik_service)
+
+
+async def run_mikrotik_test(message: Message, session_role: str, mikrotik_service: MikroTikService) -> None:
     if message.from_user is None:
         return
     if session_role not in {"admin", "superadmin"}:
