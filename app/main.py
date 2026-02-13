@@ -79,6 +79,7 @@ async def main() -> None:
         sessions=sessions,
         pin_bcrypt_rounds=settings.pin_bcrypt_rounds,
         admin_ids=settings.admin_ids,
+        superadmin_ids=settings.superadmin_ids,
         global_pin=settings.global_pin,
     )
     wg_service = WireGuardService(settings=settings)

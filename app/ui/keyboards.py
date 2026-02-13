@@ -2,22 +2,32 @@
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 
-USER_BUTTONS = [
-    [KeyboardButton(text="✅ Получить VPN"), KeyboardButton(text="🔄 Переустановить VPN")],
-    [KeyboardButton(text="📄 Мой статус"), KeyboardButton(text="🧩 Как установить")],
-    [KeyboardButton(text="🛠 Если не работает"), KeyboardButton(text="❓ Помощь")],
-]
 
-ADMIN_BUTTONS = [
-    [KeyboardButton(text="👥 Пользователи"), KeyboardButton(text="➕ Выдать доступ")],
-    [KeyboardButton(text="⛔ Заблокировать"), KeyboardButton(text="♻️ Перевыпустить пользователю")],
-    [KeyboardButton(text="🧹 Удалить VPN у пользователя"), KeyboardButton(text="📊 Статистика")],
-    [KeyboardButton(text="🧾 Логи (последние 50)")],
-]
+def _user_rows() -> list[list[KeyboardButton]]:
+    return [
+        [KeyboardButton(text="✅ Запросить VPN"), KeyboardButton(text="🔄 Переустановить VPN")],
+        [KeyboardButton(text="📄 Мой статус"), KeyboardButton(text="❓ Помощь")],
+        [KeyboardButton(text="🧩 Как установить"), KeyboardButton(text="🛠 Если не работает")],
+    ]
 
 
-def main_menu(is_admin: bool) -> ReplyKeyboardMarkup:
-    rows = USER_BUTTONS + (ADMIN_BUTTONS if is_admin else [])
+def _admin_rows() -> list[list[KeyboardButton]]:
+    return [
+        [KeyboardButton(text="🧑‍💼 Заявки"), KeyboardButton(text="👥 Пользователи")],
+        [KeyboardButton(text="🔧 MikroTik"), KeyboardButton(text="🧾 Журнал действий")],
+    ]
+
+
+def _superadmin_rows() -> list[list[KeyboardButton]]:
+    return [[KeyboardButton(text="⚙️ Настройки")]]
+
+
+def main_menu(role: str) -> ReplyKeyboardMarkup:
+    rows = _user_rows()
+    if role in {"admin", "superadmin"}:
+        rows.extend(_admin_rows())
+    if role == "superadmin":
+        rows.extend(_superadmin_rows())
     return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True)
 
 
