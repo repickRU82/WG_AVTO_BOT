@@ -133,7 +133,7 @@ async def cmd_approve(message: Message, users_repo: UsersRepository, auth_servic
         return
     parts = message.text.split(maxsplit=1)
     if len(parts) < 2 or not parts[1].isdigit():
-        await message.answer("Использование: /approve <telegram_id>")
+        await message.answer("Использование: /approve [telegram_id]")
         return
     target = int(parts[1])
     await users_repo.set_access_status(target, "approved")
@@ -153,7 +153,7 @@ async def cmd_block(message: Message, users_repo: UsersRepository, auth_service:
         return
     parts = message.text.split(maxsplit=1)
     if len(parts) < 2 or not parts[1].isdigit():
-        await message.answer("Использование: /block <telegram_id>")
+        await message.answer("Использование: /block [telegram_id]")
         return
     target = int(parts[1])
     await users_repo.set_access_status(target, "blocked")
