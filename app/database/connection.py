@@ -28,7 +28,7 @@ class Database:
             self._pool = None
 
     async def init_schema(self) -> None:
-        """Create Stage-1 MVP tables if they do not exist."""
+        """Create tables and perform lightweight migrations."""
 
         schema_sql = """
         CREATE TABLE IF NOT EXISTS users (
@@ -38,6 +38,7 @@ class Database:
             full_name TEXT,
             role TEXT NOT NULL DEFAULT 'user',
             pin_hash TEXT NOT NULL,
+            access_status TEXT NOT NULL DEFAULT 'pending',
             is_active BOOLEAN NOT NULL DEFAULT TRUE,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -46,11 +47,13 @@ class Database:
         CREATE TABLE IF NOT EXISTS wireguard_configs (
             id BIGSERIAL PRIMARY KEY,
             user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            telegram_id BIGINT,
             private_key TEXT NOT NULL,
             public_key TEXT NOT NULL,
             preshared_key TEXT NOT NULL,
             ip_address INET NOT NULL,
             config_text TEXT NOT NULL,
+            mikrotik_peer_id TEXT,
             is_active BOOLEAN NOT NULL DEFAULT TRUE,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
@@ -75,14 +78,18 @@ class Database:
         );
         """
 
-        deduplicate_active_ips_sql = """
+        alter_sql = """
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS access_status TEXT NOT NULL DEFAULT 'pending';
+        ALTER TABLE wireguard_configs ADD COLUMN IF NOT EXISTS mikrotik_peer_id TEXT;
+        ALTER TABLE wireguard_configs ADD COLUMN IF NOT EXISTS telegram_id BIGINT;
+
+        UPDATE wireguard_configs cfg
+        SET telegram_id = u.telegram_id
+        FROM users u
+        WHERE cfg.user_id = u.id AND cfg.telegram_id IS NULL;
+
         WITH ranked_active AS (
-            SELECT
-                id,
-                ROW_NUMBER() OVER (
-                    PARTITION BY ip_address
-                    ORDER BY created_at DESC, id DESC
-                ) AS row_num
+            SELECT id, ROW_NUMBER() OVER (PARTITION BY ip_address ORDER BY created_at DESC, id DESC) AS row_num
             FROM wireguard_configs
             WHERE is_active
         )
@@ -91,18 +98,30 @@ class Database:
         FROM ranked_active AS ra
         WHERE cfg.id = ra.id
           AND ra.row_num > 1;
-        """
 
-        create_unique_ip_index_sql = """
+        WITH ranked_user AS (
+            SELECT id, user_id, ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY created_at DESC, id DESC) AS row_num
+            FROM wireguard_configs
+            WHERE is_active
+        )
+        UPDATE wireguard_configs AS cfg
+        SET is_active = FALSE
+        FROM ranked_user AS ru
+        WHERE cfg.id = ru.id
+          AND ru.row_num > 1;
+
         CREATE UNIQUE INDEX IF NOT EXISTS uq_wireguard_configs_ip_active
             ON wireguard_configs (ip_address)
+            WHERE is_active;
+
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_wireguard_configs_user_active
+            ON wireguard_configs (user_id)
             WHERE is_active;
         """
 
         async with self.pool.acquire() as conn:
             await conn.execute(schema_sql)
-            await conn.execute(deduplicate_active_ips_sql)
-            await conn.execute(create_unique_ip_index_sql)
+            await conn.execute(alter_sql)
 
     @asynccontextmanager
     async def acquire(self) -> AsyncIterator[asyncpg.Connection]:
