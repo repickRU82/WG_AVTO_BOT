@@ -12,9 +12,6 @@ from librouteros import connect
 
 from app.utils.logging_compat import get_logger
 
-import structlog
-from librouteros import connect
-
 
 class MikroTikClientError(Exception):
     """Raised when RouterOS API operation fails."""
@@ -38,7 +35,6 @@ class MikroTikClient:
 
     def __post_init__(self) -> None:
         self._logger = get_logger(__name__).bind(
-        self._logger = structlog.get_logger(__name__).bind(
             host=self.host,
             port=self.port,
             tls=self.use_tls,
