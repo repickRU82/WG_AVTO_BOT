@@ -10,6 +10,11 @@ from aiogram.types import Message
 from app.database.repositories import UsersRepository
 from app.services.auth_service import AuthService
 from app.ui.keyboards import main_menu
+from app.utils.logging_compat import get_logger
+from app.ui import texts
+
+router = Router(name="auth")
+logger = get_logger(__name__)
 from app.ui import texts
 
 router = Router(name="auth")

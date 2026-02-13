@@ -8,6 +8,10 @@ from dataclasses import dataclass, field
 from ipaddress import IPv4Address
 from typing import Any
 
+from librouteros import connect
+
+from app.utils.logging_compat import get_logger
+
 import structlog
 from librouteros import connect
 
@@ -33,6 +37,7 @@ class MikroTikClient:
     _logger: Any = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
+        self._logger = get_logger(__name__).bind(
         self._logger = structlog.get_logger(__name__).bind(
             host=self.host,
             port=self.port,

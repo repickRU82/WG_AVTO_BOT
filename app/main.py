@@ -18,6 +18,7 @@ from app.services.auth_service import AuthService
 from app.services.mikrotik_service import MikroTikService
 from app.services.wireguard_service import WireGuardService
 from app.utils.logger import setup_logging
+from app.utils.logging_compat import get_logger
 from app.utils.session import SessionManager
 
 
@@ -41,6 +42,7 @@ async def main() -> None:
 
     settings = get_settings()
     setup_logging(settings.log_level, settings.log_file_path)
+    logger = get_logger(__name__)
     logger = structlog.get_logger(__name__)
 
     raw_database_dsn = os.getenv("DATABASE_DSN", "")
@@ -99,7 +101,7 @@ async def main() -> None:
     try:
         await dp.start_polling(bot)
     finally:
-        await redis.close()
+        await redis.aclose()
         await database.disconnect()
         await bot.session.close()
 

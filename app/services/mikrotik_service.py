@@ -3,6 +3,10 @@
 from dataclasses import dataclass, field
 from typing import Any
 
+
+from app.config import Settings
+from app.integrations import MikroTikClient, MikroTikClientError
+from app.utils.logging_compat import get_logger
 import structlog
 
 from app.config import Settings
@@ -18,6 +22,7 @@ class MikroTikService:
     _logger: Any = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
+        self._logger = get_logger(__name__)
         self._logger = structlog.get_logger(__name__)
         self._client = MikroTikClient(
             host=self.settings.mikrotik_host,
@@ -54,6 +59,15 @@ class MikroTikService:
             preshared_key=preshared_key,
             comment=comment,
         )
+
+    async def test_connection(self) -> tuple[str, int]:
+        identity = await self._client.ping()
+        peers = await self._client.list_wireguard_peers(self.settings.wg_interface_name)
+        return identity, len(peers)
+
+    async def remove_wireguard_peer(self, peer_id: str) -> None:
+        await self._client.remove_wireguard_peer(peer_id)
+
 
     async def test_connection(self) -> tuple[str, int]:
         identity = await self._client.ping()
