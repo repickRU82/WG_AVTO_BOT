@@ -10,6 +10,7 @@ from app.database.repositories import UsersRepository
 from app.services.auth_service import AuthService
 from app.ui import texts
 from app.ui.keyboards import main_menu
+from app.ui.labels import BTN_LOGIN
 from app.utils.logging_compat import get_logger
 
 router = Router(name="auth")
@@ -84,7 +85,7 @@ async def cmd_login(message: Message, state: FSMContext) -> None:
     await message.answer(texts.START_ASK_PIN)
 
 
-@router.message(F.text == "🔐 Войти (PIN)")
+@router.message(F.text == BTN_LOGIN)
 async def login_button(message: Message, state: FSMContext) -> None:
     await state.set_state(AuthStates.waiting_for_pin)
     await message.answer(texts.START_ASK_PIN)
@@ -132,7 +133,7 @@ async def cmd_approve(message: Message, users_repo: UsersRepository, auth_servic
         return
     parts = message.text.split(maxsplit=1)
     if len(parts) < 2 or not parts[1].isdigit():
-        await message.answer("Использование: /approve <telegram_id>")
+        await message.answer("Использование: /approve [telegram_id]")
         return
     target = int(parts[1])
     await users_repo.set_access_status(target, "approved")
@@ -152,7 +153,7 @@ async def cmd_block(message: Message, users_repo: UsersRepository, auth_service:
         return
     parts = message.text.split(maxsplit=1)
     if len(parts) < 2 or not parts[1].isdigit():
-        await message.answer("Использование: /block <telegram_id>")
+        await message.answer("Использование: /block [telegram_id]")
         return
     target = int(parts[1])
     await users_repo.set_access_status(target, "blocked")

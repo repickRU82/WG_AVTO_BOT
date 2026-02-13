@@ -84,3 +84,27 @@ class UsersRepository:
         """
         async with self._pool.acquire() as conn:
             return await conn.fetch(query)
+
+    async def list_recent(self, limit: int = 20) -> list[asyncpg.Record]:
+        query = """
+        SELECT telegram_id, username, full_name, role, access_status, last_seen
+        FROM users
+        ORDER BY updated_at DESC
+        LIMIT $1
+        """
+        async with self._pool.acquire() as conn:
+            return await conn.fetch(query, limit)
+
+    async def search(self, query_text: str, limit: int = 20) -> list[asyncpg.Record]:
+        query = """
+        SELECT telegram_id, username, full_name, role, access_status, last_seen
+        FROM users
+        WHERE CAST(telegram_id AS TEXT) ILIKE $1
+           OR COALESCE(username, '') ILIKE $1
+           OR COALESCE(full_name, '') ILIKE $1
+        ORDER BY updated_at DESC
+        LIMIT $2
+        """
+        pattern = f"%{query_text}%"
+        async with self._pool.acquire() as conn:
+            return await conn.fetch(query, pattern, limit)
