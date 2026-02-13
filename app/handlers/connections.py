@@ -67,7 +67,7 @@ async def _send_config(message: Message, telegram_id: int, config_text: str) -> 
 
 
 @router.message(Command("new_connection"))
-@router.message(F.text == "✅ Получить VPN")
+@router.message(F.text == "✅ Запросить VPN")
 async def cmd_new_connection(
     message: Message,
     users_repo: UsersRepository,
@@ -214,7 +214,7 @@ async def confirm_reissue(
 async def cmd_mt_test(message: Message, session_role: str, mikrotik_service: MikroTikService) -> None:
     if message.from_user is None:
         return
-    if session_role != "admin":
+    if session_role not in {"admin", "superadmin"}:
         await message.answer("Команда доступна только администраторам.")
         return
 

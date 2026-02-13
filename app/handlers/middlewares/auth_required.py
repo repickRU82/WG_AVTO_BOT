@@ -10,7 +10,7 @@ from app.utils.session import SessionManager
 
 
 class AuthRequiredMiddleware(BaseMiddleware):
-    """Block handler execution when user has no active session."""
+    """Populate session role when available without blocking menu UX."""
 
     def __init__(self, session_manager: SessionManager) -> None:
         self._session_manager = session_manager
@@ -25,9 +25,5 @@ class AuthRequiredMiddleware(BaseMiddleware):
             return await handler(event, data)
 
         role = await self._session_manager.get_role(event.from_user.id)
-        if role is None:
-            await event.answer("Сессия не найдена или истекла (15 мин). Выполните /login")
-            return None
-
         data["session_role"] = role
         return await handler(event, data)
