@@ -355,6 +355,7 @@ async def cmd_mt_test(message: Message, session_role: str, mikrotik_service: Mik
 async def cmd_mt_test(
     message: Message,
     mikrotik_service: MikroTikService,
+    session_role: str,
 ) -> None:
     """Admin command for MikroTik API diagnostics."""
 
