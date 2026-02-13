@@ -2,6 +2,7 @@ import asyncio
 from dataclasses import dataclass
 
 from app.services.auth_service import AuthService
+from app.utils.security import hash_pin
 
 
 @dataclass
@@ -27,6 +28,8 @@ class FakeUsersRepo:
             pin_hash="ignored",
             is_active=True,
             access_status="approved",
+            pin_hash=hash_pin("1234", rounds=12),
+            is_active=True,
         )
 
 
@@ -47,6 +50,7 @@ class FakeSessionManager:
 
 
 def test_pin_and_login_success() -> None:
+def test_login_success_creates_event_without_crash() -> None:
     users = FakeUsersRepo()
     logs = FakeLogsRepo()
     sessions = FakeSessionManager()
@@ -65,5 +69,11 @@ def test_pin_and_login_success() -> None:
     assert user is not None
     asyncio.run(service.login_approved(user))
 
+    )
+
+    success, role = asyncio.run(service.login(telegram_id=123, pin="1234"))
+
+    assert success is True
+    assert role == "user"
     assert sessions.created == [(123, "user")]
     assert any(event[0] == "login_success" for event in logs.events)

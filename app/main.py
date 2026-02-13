@@ -3,6 +3,7 @@
 import asyncio
 import os
 
+import structlog
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -42,6 +43,7 @@ async def main() -> None:
     settings = get_settings()
     setup_logging(settings.log_level, settings.log_file_path)
     logger = get_logger(__name__)
+    logger = structlog.get_logger(__name__)
 
     raw_database_dsn = os.getenv("DATABASE_DSN", "")
     if raw_database_dsn.upper().startswith("DATABASE_DSN="):

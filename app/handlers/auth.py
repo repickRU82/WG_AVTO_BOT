@@ -1,5 +1,6 @@
 """Authentication handlers with global PIN and admin approval workflow."""
 
+import structlog
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -14,6 +15,10 @@ from app.ui import texts
 
 router = Router(name="auth")
 logger = get_logger(__name__)
+from app.ui import texts
+
+router = Router(name="auth")
+logger = structlog.get_logger(__name__)
 
 
 class AuthStates(StatesGroup):
