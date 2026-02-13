@@ -18,13 +18,14 @@ class Settings(BaseSettings):
     bot_token: str = Field(..., min_length=20)
     bot_parse_mode: str = "HTML"
     admin_telegram_ids: str = ""
+    superadmin_telegram_ids: str = ""
     global_pin: str = "1234"
     rate_limit_reissue_seconds: int = 300
 
     database_dsn: str = "postgresql://wg_bot:wg_bot_password@127.0.0.1:5432/wg_bot"
     redis_dsn: str = "redis://127.0.0.1:6379/0"
 
-    session_ttl_seconds: int = 900
+    session_ttl_seconds: int = 2592000
     pin_bcrypt_rounds: int = 12
 
     wg_interface_name: str = "wireguard1"
@@ -76,6 +77,14 @@ class Settings(BaseSettings):
         if not self.admin_telegram_ids.strip():
             return set()
         return {int(raw.strip()) for raw in self.admin_telegram_ids.split(",") if raw.strip()}
+
+    @property
+    def superadmin_ids(self) -> set[int]:
+        """Return parsed superadmin Telegram IDs set."""
+
+        if not self.superadmin_telegram_ids.strip():
+            return set()
+        return {int(raw.strip()) for raw in self.superadmin_telegram_ids.split(",") if raw.strip()}
 
 
 @lru_cache(maxsize=1)

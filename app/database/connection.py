@@ -38,9 +38,11 @@ class Database:
             full_name TEXT,
             role TEXT NOT NULL DEFAULT 'user',
             pin_hash TEXT NOT NULL,
+            pin_verified BOOLEAN NOT NULL DEFAULT FALSE,
             access_status TEXT NOT NULL DEFAULT 'pending',
             is_active BOOLEAN NOT NULL DEFAULT TRUE,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            last_seen TIMESTAMPTZ,
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
 
@@ -80,6 +82,8 @@ class Database:
 
         alter_sql = """
         ALTER TABLE users ADD COLUMN IF NOT EXISTS access_status TEXT NOT NULL DEFAULT 'pending';
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS pin_verified BOOLEAN NOT NULL DEFAULT FALSE;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TIMESTAMPTZ;
         ALTER TABLE wireguard_configs ADD COLUMN IF NOT EXISTS mikrotik_peer_id TEXT;
         ALTER TABLE wireguard_configs ADD COLUMN IF NOT EXISTS telegram_id BIGINT;
 
